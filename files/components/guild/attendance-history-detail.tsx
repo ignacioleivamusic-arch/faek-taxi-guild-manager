@@ -1,0 +1,18 @@
+import type { AttendanceEvent, AttendanceRecord } from '@/lib/attendance'
+
+type Participant = { id: string; display_name: string | null; discord_user_id: string }
+type DetailData = { event: AttendanceEvent; participants: Participant[]; records: Array<AttendanceRecord & { roster_member: { id?: string; display_name: string | null } | null; guild_user: { discord_user_id?: string; username: string } | null }> }
+
+function date(value: string | null) { return value ? new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—' }
+
+export function AttendanceHistoryDetail({ data }: { data: DetailData }) {
+  const presentIds = new Set(data.records.map((record) => record.roster_member_id))
+  const absent = data.participants.filter((participant) => !presentIds.has(participant.id))
+  const expectedIds = new Set(data.participants.map((participant) => participant.id))
+  const replacements = data.records.filter((record) => !expectedIds.has(record.roster_member_id))
+  return <section className="rounded-2xl border border-white/10 bg-black/10 p-5" aria-labelledby="historical-attendance-detail">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 id="historical-attendance-detail" className="font-semibold">{data.event.name}</h2><p className="mt-1 text-sm text-muted-foreground">Creado {date(data.event.created_at)} · abierto {date(data.event.opened_at)} · cerrado {date(data.event.closed_at)}</p><p className="mt-1 text-xs text-violet-200">Duración: {data.event.duration_minutes} minutos</p></div><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-muted-foreground">Solo lectura</span></div>
+    <div className="mt-5 grid gap-5 lg:grid-cols-2"><div><h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-300">Presentes ({data.records.length})</h3><div className="mt-2 divide-y divide-white/10">{data.records.length ? data.records.map((record) => <div key={record.id} className="flex items-center justify-between gap-4 py-3 text-sm"><div><p>{record.roster_member?.display_name ?? 'Roster member'}</p><p className="text-xs text-muted-foreground">{record.guild_user?.username ?? 'Discord user unavailable'}</p></div><time className="text-xs text-muted-foreground">{date(record.created_at)}</time></div>) : <p className="py-4 text-sm text-muted-foreground">Todavía no hay registros.</p>}</div></div><div><h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ausentes ({absent.length})</h3><div className="mt-2 divide-y divide-white/10">{absent.length ? absent.map((participant) => <div key={participant.id} className="flex items-center justify-between gap-4 py-3 text-sm"><div><p>{participant.display_name ?? 'Roster member'}</p><p className="text-xs text-muted-foreground">{participant.discord_user_id}</p></div><span className="text-xs text-muted-foreground">AUSENTE</span></div>) : <p className="py-4 text-sm text-muted-foreground">No hay ausentes.</p>}</div></div></div>
+    {replacements.length > 0 && <div className="mt-5 border-t border-white/10 pt-5"><h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-300">SIN PARTY / REEMPLAZOS ({replacements.length})</h3><div className="mt-2 divide-y divide-white/10">{replacements.map((record) => <div key={record.id} className="flex items-center justify-between gap-4 py-3 text-sm"><div><p>{record.roster_member?.display_name ?? 'Roster member'}</p><p className="text-xs text-muted-foreground">{record.guild_user?.username ?? 'Discord user unavailable'}</p></div><time className="text-xs text-muted-foreground">{date(record.created_at)}</time></div>)}</div></div>}
+  </section>
+}
